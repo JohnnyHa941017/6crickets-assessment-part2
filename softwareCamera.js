@@ -52,9 +52,18 @@ function distanceSamples(D, cameras) {
 
   const samples = [];
   for (let i = 0; i + 1 < sorted.length; i++) {
-    samples.push(sorted[i] + (sorted[i + 1] - sorted[i]) / 2);
+    samples.push(pointBetween(sorted[i], sorted[i + 1]));
   }
   return samples;
+}
+
+// A point strictly inside (a, b). Handles infinite bounds (e.g. focus to infinity)
+// and avoids the overflow in a + (b - a) / 2 for very large magnitudes.
+function pointBetween(a, b) {
+  if (a === -Infinity && b === Infinity) return 0;
+  if (a === -Infinity) return b - Math.max(1, Math.abs(b));
+  if (b === Infinity) return a + Math.max(1, Math.abs(a));
+  return a / 2 + b / 2;
 }
 
 function coversRange(ranges, target) {
@@ -135,6 +144,14 @@ if (require.main === module) {
   assert.strictEqual(isSufficient(spec(5, 5, 5, 5), [spec(0, 4, 0, 10)]), false, 'point missed');
   assert.strictEqual(isSufficient(spec(5, 5, 0, 10), [spec(5, 6, 0, 4), spec(4, 5, 4, 10)]), true, 'line at distance 5');
   assert.strictEqual(isSufficient(spec(5, 5, 0, 10), [spec(5, 6, 0, 4), spec(4, 5, 4.5, 10)]), false, 'line with gap');
+
+  // Infinite and very large bounds
+  const Inf = Infinity;
+  assert.strictEqual(isSufficient(spec(-Inf, Inf, 0, 10), [spec(-Inf, Inf, 0, 10)]), true, 'unbounded distance');
+  assert.strictEqual(isSufficient(spec(0, Inf, 0, 10), [spec(0, 5, 0, 10), spec(5, Inf, 0, 10)]), true, 'focus to infinity');
+  assert.strictEqual(isSufficient(spec(0, Inf, 0, 10), [spec(0, 5, 0, 10), spec(Inf, Inf, 0, 10)]), false, 'only a point at infinity');
+  assert.strictEqual(isSufficient(spec(-Inf, 0, 0, 10), [spec(-Inf, -5, 0, 10)]), false, 'unbounded below with gap');
+  assert.strictEqual(isSufficient(spec(-1.7e308, 1.7e308, 0, 1), [spec(-1.7e308, 1.7e308, 0, 1)]), true, 'huge finite range');
 
   assert.throws(() => isSufficient(spec(10, 0, 0, 10), []), RangeError);
   assert.throws(() => isSufficient(target, [{ distance: { min: 0, max: 1 } }]), TypeError);
