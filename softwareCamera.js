@@ -167,14 +167,22 @@ if (require.main === module) {
     }
     return true;
   };
+  // Seeded PRNG (mulberry32) so failures are reproducible.
+  let seed = 0x6c7c1e75;
+  const random = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   const randRange = () => {
-    const a = Math.floor(Math.random() * 7), b = Math.floor(Math.random() * 7);
+    const a = Math.floor(random() * 7), b = Math.floor(random() * 7);
     return [Math.min(a, b), Math.max(a, b)];
   };
   for (let i = 0; i < 5000; i++) {
     const [d0, d1] = randRange(), [l0, l1] = randRange();
     const t = spec(d0, d1, l0, l1);
-    const cams = Array.from({ length: Math.floor(Math.random() * 8) }, () => {
+    const cams = Array.from({ length: Math.floor(random() * 8) }, () => {
       const [a, b] = randRange(), [c, d] = randRange();
       return spec(a, b, c, d);
     });
